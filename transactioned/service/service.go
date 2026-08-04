@@ -15,7 +15,7 @@ func New(deps Dependencies) *Service {
 }
 
 func (s *Service) UpdateRide(ctx context.Context, rideID string) error {
-	err := s.deps.RunInNewTx(ctx, func(ctx context.Context, tx TxDeps) error {
+	err := s.deps.RunInNewTx(ctx, func(ctx context.Context, tx AtomicDeps) error {
 		return updateRideInTx(ctx, tx, rideID)
 	})
 	if err != nil {
@@ -25,7 +25,7 @@ func (s *Service) UpdateRide(ctx context.Context, rideID string) error {
 	return nil
 }
 
-func updateRideInTx(ctx context.Context, tx TxDeps, rideID string) error {
+func updateRideInTx(ctx context.Context, tx AtomicDeps, rideID string) error {
 	err := tx.Lock(ctx, rideID)
 	if err != nil {
 		return errors.WithMessage(err, "lock ride")

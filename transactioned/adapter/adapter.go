@@ -22,13 +22,13 @@ func New(db *sql.DB, httpClient *http.Client, driverServiceURL string) *Adapter 
 
 var _ service.Dependencies = (*Adapter)(nil)
 
-func (a *Adapter) RunInNewTx(ctx context.Context, f func(ctx context.Context, tx service.TxDeps) error) error {
+func (a *Adapter) RunInNewTx(ctx context.Context, f func(ctx context.Context, tx service.AtomicDeps) error) error {
 	sqlTx, err := a.db.BeginTx(ctx, nil)
 	if err != nil {
 		return errors.Wrap(err, "begin tx")
 	}
 
-	err = f(ctx, &txDeps{tx: sqlTx, httpClient: a.httpClient, driverServiceURL: a.driverServiceURL})
+	err = f(ctx, &atomicDeps{tx: sqlTx, httpClient: a.httpClient, driverServiceURL: a.driverServiceURL})
 	if err != nil {
 		_ = sqlTx.Rollback()
 		return err

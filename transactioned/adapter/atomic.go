@@ -14,15 +14,15 @@ import (
 	"layered/transactioned/service"
 )
 
-type txDeps struct {
+type atomicDeps struct {
 	tx               *sql.Tx
 	httpClient       *http.Client
 	driverServiceURL string
 }
 
-var _ service.TxDeps = (*txDeps)(nil)
+var _ service.AtomicDeps = (*atomicDeps)(nil)
 
-func (td *txDeps) Lock(ctx context.Context, rideID string) error {
+func (td *atomicDeps) Lock(ctx context.Context, rideID string) error {
 	_, err := td.tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock(hashtext($1))`, rideID)
 	if err != nil {
 		return errors.Wrapf(err, "lock ride %s", rideID)
@@ -31,7 +31,7 @@ func (td *txDeps) Lock(ctx context.Context, rideID string) error {
 	return nil
 }
 
-func (td *txDeps) GetRide(ctx context.Context, rideID string) (service.Ride, error) {
+func (td *atomicDeps) GetRide(ctx context.Context, rideID string) (service.Ride, error) {
 	var (
 		ride          service.Ride
 		processedAt   sql.NullTime
@@ -54,7 +54,7 @@ func (td *txDeps) GetRide(ctx context.Context, rideID string) (service.Ride, err
 	return ride, nil
 }
 
-func (td *txDeps) FetchDriver(ctx context.Context, driverID string) (service.Driver, error) {
+func (td *atomicDeps) FetchDriver(ctx context.Context, driverID string) (service.Driver, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
 		fmt.Sprintf("%s/drivers/%s", td.driverServiceURL, driverID), nil)
 	if err != nil {
@@ -99,7 +99,7 @@ func (td *txDeps) FetchDriver(ctx context.Context, driverID string) (service.Dri
 	return service.Driver{ID: raw.DriverID, Name: raw.Name, IsActive: raw.IsActive}, nil
 }
 
-func (td *txDeps) Persist(ctx context.Context, rideID, driverName string) error {
+func (td *atomicDeps) Persist(ctx context.Context, rideID, driverName string) error {
 	payload, err := json.Marshal(struct {
 		RideID     string `json:"ride_id"`
 		DriverName string `json:"driver_name"`
